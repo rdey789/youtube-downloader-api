@@ -4,23 +4,26 @@ import os
 
 app = Flask(__name__)
 
-@app.route('/download', methods=['POST'])
+@app.route("/", methods=["GET"])
+def home():
+    return "YouTube Downloader API is running!"
+
+@app.route("/download", methods=["POST"])
 def download_video():
     data = request.json
-    url = data.get('url')
-    path = './downloads'
+    url = data.get("url")
 
     if not url:
-        return jsonify({'status': 'error', 'message': 'Missing YouTube URL'}), 400
+        return jsonify({"error": "URL is required"}), 400
 
     try:
-        os.makedirs(path, exist_ok=True)
         yt = YouTube(url)
-        stream = yt.streams.get_highest_resolution()
-        output_file = stream.download(output_path=path)
-        return jsonify({'status': 'success', 'file_path': output_file})
+        stream = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc().first()
+        stream.download(output_path="/tmp")
+        return jsonify({"message": "Video downloaded successfully", "title": yt.title})
     except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
